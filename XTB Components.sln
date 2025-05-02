@@ -1,0 +1,18 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35825.156 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "XTB Components", "XTB Components\XTB Components.shproj", "{FA24C448-17A0-4CD6-BFAD-DA2202F2056E}"
+EndProject
+Global
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {07825198-A198-435D-8699-64F4029DC390}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		XTB Components\XTB Components.projitems*{fa24c448-17a0-4cd6-bfad-da2202f2056e}*SharedItemsImports = 13
+	EndGlobalSection
+EndGlobal

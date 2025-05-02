@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>fa24c448-17a0-4cd6-bfad-da2202f2056e</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>XTB_Components</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)FlipSwitch.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FlipSwitch.Designer.cs">
+      <DependentUpon>FlipSwitch.cs</DependentUpon>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)SortableCheckList.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SortableCheckList.Designer.cs">
+      <DependentUpon>SortableCheckList.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)FlipSwitch.resx">
+      <DependentUpon>FlipSwitch.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>
