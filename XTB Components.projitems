@@ -9,18 +9,21 @@
     <Import_RootNamespace>XTB_Components</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)\Flip Switch\FlipSwitch.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)\Flip Switch\FlipSwitch.Designer.cs">
+    <Compile Include="$(MSBuildThisFileDirectory)Flip Switch\FlipSwitch.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Flip Switch\FlipSwitch.Designer.cs">
       <DependentUpon>FlipSwitch.cs</DependentUpon>
     </Compile>
-    <Compile Include="$(MSBuildThisFileDirectory)SortableCheckList.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SortableCheckList.Designer.cs">
+    <Compile Include="$(MSBuildThisFileDirectory)Sortable Checklist\SortableCheckList.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sortable Checklist\SortableCheckList.Designer.cs">
       <DependentUpon>SortableCheckList.cs</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="$(MSBuildThisFileDirectory)\Flip Switch\FlipSwitch.resx">
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)Flip Switch\FlipSwitch.resx">
       <DependentUpon>FlipSwitch.cs</DependentUpon>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Sortable Checklist\" />
   </ItemGroup>
 </Project>
