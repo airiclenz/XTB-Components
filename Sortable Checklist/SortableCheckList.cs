@@ -1573,7 +1573,7 @@ namespace Com.AiricLenz.XTB.Components
 
 
 		// ============================================================================
-		public void Sort()
+		public bool Sort()
 		{
 			foreach (var column in _columns)
 			{
@@ -1582,23 +1582,26 @@ namespace Com.AiricLenz.XTB.Components
 					continue;
 				}
 
-				if (column.SortOrder == SortOrder.Ascending)
+				try
 				{
-					// Perform sorting ascending
-					_items = _items.OrderBy(
-						item => GetPropertyValue(
-							item.ItemObject,
-							column.PropertyName).ToString()).ToList();
+					if (column.SortOrder == SortOrder.Ascending)
+					{
+						// Perform sorting ascending
+						_items = _items.OrderBy(
+							item => GetPropertyValue(
+								item.ItemObject,
+								column.PropertyName).ToString()).ToList();
+					}
+					else
+					{
+						// Perform sorting descending
+						_items = _items.OrderByDescending(
+							item => GetPropertyValue(
+								item.ItemObject,
+								column.PropertyName).ToString()).ToList();
+					}
 				}
-				else
-				{
-					// Perform sorting descending
-					_items = _items.OrderByDescending(
-						item => GetPropertyValue(
-							item.ItemObject,
-							column.PropertyName).ToString()).ToList();
-				}
-
+				catch (Exception) { return false; }
 
 				// update all sorting indexes
 				int index = 0;
@@ -1611,6 +1614,8 @@ namespace Com.AiricLenz.XTB.Components
 				Invalidate();
 				break;
 			}
+
+			return true;
 		}
 
 
@@ -1831,6 +1836,16 @@ namespace Com.AiricLenz.XTB.Components
 		public SortableCheckItem()
 		{
 			// nottin...
+		}
+
+
+		// ============================================================================
+		public SortableCheckItem(
+			object item)
+		{
+			_item = item;
+			_isChecked = false;
+			_title = item.ToString();
 		}
 
 
