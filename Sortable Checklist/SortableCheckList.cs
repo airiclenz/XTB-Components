@@ -34,45 +34,47 @@ namespace Com.AiricLenz.XTB.Components
 		private bool _showToolTips = true;
 
 		private List<SortableCheckItem> _items = new List<SortableCheckItem>();
-		private List<ColumnDefinition> _columns = new List<ColumnDefinition>();
+        private List<SortableCheckItem> _allItems = new List<SortableCheckItem>();
+        private List<ColumnDefinition> _columns = new List<ColumnDefinition>();
 
-		private int _itemHeight = 20;
-		private float _textHeight;
-		private float _borderThickness = 1f;
-		private Color _borderColor = SystemColors.ControlDark;
-		private int _scrollOffset = 0;
-		private int _checkBoxSize = 18;
-		private int _checkBoxRadius = 5;
-		private int _checkBoxMargin = 3;
-		private int _selectedIndex = -1;
-		private int _dragBurgerSize = 14;
+        private int _itemHeight = 20;
+        private float _textHeight;
+        private float _borderThickness = 1f;
+        private Color _borderColor = SystemColors.ControlDark;
+        private int _scrollOffset = 0;
+        private int _checkBoxSize = 18;
+        private int _checkBoxRadius = 5;
+        private int _checkBoxMargin = 3;
+        private int _selectedIndex = -1;
+        private int _dragBurgerSize = 14;
 		private float _dragBurgerLineThickness = 1.5f;
 		private bool _showScrollBar = true;
 		private bool _isSortable = true;
 		private bool _isCheckable = true;
 		private Image _noDataImage = null;
 		private int _dynamicColumnSpace = 0;
+        private SortableCheckListFilter _filter = null;
 
-		private Color _colorOff = Color.FromArgb(150, 150, 150);
-		private Color _colorOn = Color.MediumSlateBlue;
+        private Color _colorOff = Color.FromArgb(150, 150, 150);
+        private Color _colorOn = Color.MediumSlateBlue;
 
-		private const string MeasureText = "QWypg/#_Ág";
-		private int? _dragStartIndex = null;
-		private int _currentDropIndex = -1;
-		private int _hoveringAboveDragBurgerIndex = -1;
-		private int _hoveringAboveCheckBoxIndex = -1;
+        private const string MeasureText = "QWypg/#_Ág";
+        private int? _dragStartIndex = null;
+        private int _currentDropIndex = -1;
+        private int _hoveringAboveDragBurgerIndex = -1;
+        private int _hoveringAboveCheckBoxIndex = -1;
 
 
 
-		// ============================================================================
-		public SortableCheckList()
-		{
-			InitializeComponent();
-			SuspendLayout();
+        // ============================================================================
+        public SortableCheckList()
+        {
+            InitializeComponent();
+            SuspendLayout();
 
-			SetStyle(
-				ControlStyles.Selectable |
-				ControlStyles.UserPaint |
+            SetStyle(
+                ControlStyles.Selectable |
+                ControlStyles.UserPaint |
 				ControlStyles.ResizeRedraw |
 				ControlStyles.OptimizedDoubleBuffer,
 				true);
@@ -121,28 +123,30 @@ namespace Com.AiricLenz.XTB.Components
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public List<SortableCheckItem> Items
 		{
-			get => _items;
-			set
-			{
-				_items = value ?? new List<SortableCheckItem>();
+            get => _allItems;
+            set
+            {
+                _allItems = value ?? new List<SortableCheckItem>();
+                _items = new List<SortableCheckItem>(_allItems);
 
-				RecalculateColumnWidths();
-				Invalidate();
-				SyncJsonProperties();
-			}
-		}
+                RecalculateColumnWidths();
+                ApplyFilter();      // in case a filter is already set
+                Invalidate();
+                SyncJsonProperties();
+            }
+        }
 
-		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-		[Browsable(true)]
-		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-		public List<ColumnDefinition> Columns
-		{
-			get => _columns;
-			set
-			{
-				_columns = value ?? new List<ColumnDefinition>();
+        //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        [Browsable(true)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public List<ColumnDefinition> Columns
+        {
+            get => _columns;
+            set
+            {
+                _columns = value ?? new List<ColumnDefinition>();
 
-				RecalculateColumnWidths();
+                RecalculateColumnWidths();
 				OnSortingColumnChanged();
 				Invalidate();
 				SyncJsonProperties();
@@ -165,30 +169,42 @@ namespace Com.AiricLenz.XTB.Components
 			}
 		}
 
-		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-		private void SyncJsonProperties()
-		{
-			ColumnsJson = JsonConvert.SerializeObject(_columns, Formatting.None);
-		}
+        //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        public SortableCheckListFilter Filter
+        {
+            get => _filter;
+            set
+            {
+                _filter = value;
+                ApplyFilter();
+                Invalidate();
+            }
+        }
 
-		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-		/// <summary>
-		/// Return the index of the currently selected row / item; If no row / item is selected, the return value is -1
-		/// </summary>
-		public int SelectedIndex
-		{
-			get
-			{
-				return _selectedIndex;
-			}
-		}
+        //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        private void SyncJsonProperties()
+        {
+            ColumnsJson = JsonConvert.SerializeObject(_columns, Formatting.None);
+        }
 
-		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-		/// <summary>
-		/// Return the currently selected row / item; If no row / item is selected, the return value is null
-		/// </summary>
-		public object SelectedItem
-		{
+        //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        /// <summary>
+        /// Return the index of the currently selected row / item; If no row / item is selected, the return value is -1
+        /// </summary>
+        public int SelectedIndex
+        {
+            get
+            {
+                return _selectedIndex;
+            }
+        }
+
+        //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        /// <summary>
+        /// Return the currently selected row / item; If no row / item is selected, the return value is null
+        /// </summary>
+        public object SelectedItem
+        {
 			get
 			{
 				if (_selectedIndex != -1)
@@ -1109,16 +1125,17 @@ namespace Com.AiricLenz.XTB.Components
 
 				ResetSortingColumnToNone();
 
-				// Trigger events
-				OnItemOrderChanged();
-				OnSelectedIndexChanged();
-				OnSortingColumnChanged();
-			}
-			else
-			{
-				_dragStartIndex = null;
-				_currentDropIndex = -1;
-			}
+                // Trigger events
+                SyncAllItemsOrder();
+                OnItemOrderChanged();
+                OnSelectedIndexChanged();
+                OnSortingColumnChanged();
+            }
+            else
+            {
+                _dragStartIndex = null;
+                _currentDropIndex = -1;
+            }
 
 			Invalidate();
 		}
@@ -1610,17 +1627,18 @@ namespace Com.AiricLenz.XTB.Components
 					item.SortingIndex = index++;
 				}
 
-				OnItemOrderChanged();
-				Invalidate();
-				break;
-			}
+                SyncAllItemsOrder();
+                OnItemOrderChanged();
+                Invalidate();
+                break;
+            }
 
-			return true;
-		}
+            return true;
+        }
 
 
-		// ============================================================================
-		private object GetPropertyValue(
+        // ============================================================================
+        private object GetPropertyValue(
 			object obj,
 			string propertyName)
 		{
@@ -1687,25 +1705,25 @@ namespace Com.AiricLenz.XTB.Components
 				}
 			}
 
-			// not over a data row? 
-			if (_selectedIndex == -1)
-			{
-				// we are above the header
-				if (pointerLocation.Y < _itemHeight)
-				{
-					_currentTooltipText = "This is the header with titles for the different columns below.";
+            // not over a data row?
+            if (_selectedIndex == -1)
+            {
+                // we are above the header
+                if (pointerLocation.Y < _itemHeight)
+                {
+                    _currentTooltipText = "This is the header with titles for the different columns below.";
 
-					if (!isClick)
-					{
-						return;
-					}
+                    if (!isClick)
+                    {
+                        return;
+                    }
 
-					HandleColumnsResorting(
-						pointerLocation);
-				}
-				else
-				{
-					_currentTooltipText = string.Empty;
+                    HandleColumnsResorting(
+                        pointerLocation);
+                }
+                else
+                {
+                    _currentTooltipText = string.Empty;
 				}
 			}
 
@@ -1811,37 +1829,110 @@ namespace Com.AiricLenz.XTB.Components
 
 		}
 
+        // ============================================================================
+        private bool ApplyFilter()
+        {
+            if (_allItems == null)
+            {
+                return false;
+            }
+
+            // No filter?  Show everything.
+            if (_filter == null ||
+                _filter.Column == null ||
+                string.IsNullOrWhiteSpace(_filter.Column.PropertyName) ||
+                string.IsNullOrWhiteSpace(_filter.FilterString))
+            {
+                _items = new List<SortableCheckItem>(_allItems);
+                ClampScrollOffset();
+                return true;
+            }
+
+            string filterValue = _filter.FilterString;
+            Func<string, bool> predicate = _ => true;
+
+            switch (_filter.ConditionOperator)
+            {
+                case ConditionOperator.Equals:
+                    predicate = s => string.Equals(s, filterValue, StringComparison.OrdinalIgnoreCase);
+                    break;
+                case ConditionOperator.Contains:
+                    predicate = s => s?.IndexOf(filterValue, StringComparison.OrdinalIgnoreCase) >= 0;
+                    break;
+                case ConditionOperator.StartsWith:
+                    predicate = s => s?.StartsWith(filterValue, StringComparison.OrdinalIgnoreCase) == true;
+                    break;
+                case ConditionOperator.EndsWith:
+                    predicate = s => s?.EndsWith(filterValue, StringComparison.OrdinalIgnoreCase) == true;
+                    break;
+            }
+
+            _items =
+                _allItems.Where(itm =>
+                {
+                    var propObj = GetPropertyValue(itm.ItemObject, _filter.Column.PropertyName);
+                    string propStr = propObj?.ToString() ?? string.Empty;
+                    return predicate(propStr);
+                })
+                .ToList();
+
+            ClampScrollOffset();
+            return true;
+        }
 
 
-		#endregion
+        // ============================================================================
+        // Keep the master list (_allItems) in the same order as the visible list
+        // ============================================================================
+        private void SyncAllItemsOrder()
+        {
+            if (_allItems == null ||
+                _items == null)
+            {
+                return;
+            }
 
-	}
+            // Rank visible items by their current order
+            var rank = _items
+                    .Select((item, idx) => new { item, idx })
+                    .ToDictionary(x => x.item, x => x.idx);
 
-	#region Supporting Classes
-
-	// ============================================================================
-	// ============================================================================
-	// ============================================================================
-	[Serializable]
-	public class SortableCheckItem : IComparable<SortableCheckItem>
-	{
-
-		private object _item;
-		private bool _isChecked;
-		private int _sortingIndex;
-		private string _title;
-
-
-		// ============================================================================
-		public SortableCheckItem()
-		{
-			// nottin...
-		}
+            // Stable sort: visible items first (new order), then the rest
+            _allItems = _allItems
+                    .OrderBy(item => rank.TryGetValue(item, out int r) ? r : int.MaxValue)
+                    .ToList();
+        }
 
 
-		// ============================================================================
-		public SortableCheckItem(
-			object item)
+        #endregion
+
+    }
+
+    #region Supporting Classes
+
+    // ============================================================================
+    // ============================================================================
+    // ============================================================================
+    [Serializable]
+    public class SortableCheckItem : IComparable<SortableCheckItem>
+    {
+
+        private object _item;
+        private bool _isChecked;
+        private int _sortingIndex;
+        private string _title;
+
+
+        // ============================================================================
+        public SortableCheckItem()
+        {
+            // nottin...
+        }
+
+
+        // ============================================================================
+        public SortableCheckItem(
+            object item)
 		{
 			_item = item;
 			_isChecked = false;
@@ -2105,5 +2196,65 @@ namespace Com.AiricLenz.XTB.Components
 	}
 
 
-	#endregion
+    // ============================================================================
+    // ============================================================================
+    // ============================================================================
+    public class SortableCheckListFilter
+    {
+        // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        public ColumnDefinition Column
+        {
+            get; set;
+        }
+
+        // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        public string FilterString
+        {
+            get; set;
+        }
+
+        // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        public ConditionOperator ConditionOperator
+        {
+            get; set;
+        }
+
+
+        // ============================================================================
+        public SortableCheckListFilter()
+        {
+            Column = null;
+            FilterString = string.Empty;
+            ConditionOperator = ConditionOperator.Equals;
+        }
+
+        // ============================================================================
+        public SortableCheckListFilter(
+            ColumnDefinition column,
+            string filterString,
+            ConditionOperator condition)
+        {
+            Column = null;
+            FilterString = string.Empty;
+            ConditionOperator = ConditionOperator.Equals;
+        }
+
+
+    }
+
+
+    // ============================================================================
+    // ============================================================================
+    // ============================================================================
+    public enum ConditionOperator
+    {
+        Equals,
+        Contains,
+        StartsWith,
+        EndsWith
+    }
+
+
+
+    #endregion
 }
