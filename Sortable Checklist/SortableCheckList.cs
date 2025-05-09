@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -132,7 +133,7 @@ namespace Com.AiricLenz.XTB.Components
 				_items = new List<SortableCheckItem>(_allItems);
 
 				RecalculateColumnWidths();
-				ApplyFilter();      // in case a filter is already set
+				ApplyFilter();
 				Invalidate();
 				SyncJsonProperties();
 			}
@@ -867,7 +868,6 @@ namespace Com.AiricLenz.XTB.Components
 					}
 				}
 
-
 				// Draw the checkbox background
 				if (_isCheckable)
 				{
@@ -1247,7 +1247,7 @@ namespace Com.AiricLenz.XTB.Components
 						_scrollOffset,
 						Math.Max(
 							0,
-							(Items.Count * _itemHeight) - (Height - _itemHeight))));
+							(_items.Count * _itemHeight) - (Height - _itemHeight))));
 
 			_scrollOffset = RoundUpToNextMultiple(_scrollOffset, _itemHeight);
 		}
@@ -1915,6 +1915,7 @@ namespace Com.AiricLenz.XTB.Components
 	// ============================================================================
 	// ============================================================================
 	[Serializable]
+	[TypeConverter(typeof(ColumnDefinitionConverter))]
 	public class SortableCheckItem : IComparable<SortableCheckItem>
 	{
 
@@ -1923,12 +1924,6 @@ namespace Com.AiricLenz.XTB.Components
 		private int _sortingIndex;
 		private string _title;
 
-
-		// ============================================================================
-		public SortableCheckItem()
-		{
-			// nottin...
-		}
 
 
 		// ============================================================================
@@ -2131,6 +2126,12 @@ namespace Com.AiricLenz.XTB.Components
 
 
 		// ============================================================================
+		public override string ToString()
+		{
+			return string.IsNullOrWhiteSpace(Header) ? base.ToString() : Header;
+		}
+
+		// ============================================================================
 		public int GetWithInPixels(
 			int clientWith = 0)
 		{
@@ -2146,6 +2147,8 @@ namespace Com.AiricLenz.XTB.Components
 
 			return _widthNumber;
 		}
+
+
 
 
 		// ============================================================================
@@ -2185,6 +2188,40 @@ namespace Com.AiricLenz.XTB.Components
 		}
 
 	}
+
+	// ============================================================================
+	// ============================================================================
+	// ============================================================================
+	internal sealed class ColumnDefinitionConverter : ExpandableObjectConverter
+	{
+		// ============================================================================
+		public override bool CanConvertTo(
+			ITypeDescriptorContext context,
+			Type destinationType) =>
+			destinationType == typeof(string) || base.CanConvertTo(context, destinationType);
+
+
+		// ============================================================================
+		public override object ConvertTo(
+			ITypeDescriptorContext context,
+			CultureInfo culture,
+			object value,
+			Type destinationType)
+		{
+			if (destinationType == typeof(string) &&
+				value is ColumnDefinition col)
+			{
+				// Use the header text Visual Studio designers should display.
+				return string.IsNullOrWhiteSpace(col.Header)
+					   ? col.GetType().Name
+					   : col.Header;
+			}
+
+			return base.ConvertTo(context, culture, value, destinationType);
+		}
+	}
+
+
 
 	// ============================================================================
 	// ============================================================================
