@@ -51,9 +51,11 @@ namespace Com.AiricLenz.XTB.Components
 		private int _selectedIndex = -1;
 		private int _dragBurgerSize = 14;
 		private float _dragBurgerLineThickness = 1.5f;
-		private bool _showScrollBar = true;
+		private bool _isShowScrollBar = true;
+		private bool _isShowOnlyCheckedItems = false;
 		private bool _isSortable = true;
 		private bool _isCheckable = true;
+		private bool _isBoldWhenCheck = true;
 		private Image _noDataImage = null;
 		private int _dynamicColumnSpace = 0;
 		private SortableCheckListFilter _filter = null;
@@ -228,17 +230,7 @@ namespace Com.AiricLenz.XTB.Components
 		{
 			get
 			{
-				List<SortableCheckItem> resultList = new List<SortableCheckItem>();
-
-				foreach (var item in _items)
-				{
-					if (item.IsChecked)
-					{
-						resultList.Add(item);
-					}
-				}
-
-				return resultList;
+				return _items.Where(item => item.IsChecked).ToList();
 			}
 		}
 
@@ -251,17 +243,9 @@ namespace Com.AiricLenz.XTB.Components
 		{
 			get
 			{
-				List<object> resultList = new List<object>();
-
-				foreach (var item in _items)
-				{
-					if (item.IsChecked)
-					{
-						resultList.Add(item.ItemObject);
-					}
-				}
-
-				return resultList;
+                return _items.Where(item => item.IsChecked)
+                             .Select(item => item.ItemObject)
+                             .ToList();
 			}
 		}
 
@@ -460,11 +444,11 @@ namespace Com.AiricLenz.XTB.Components
 		{
 			get
 			{
-				return _showScrollBar;
+				return _isShowScrollBar;
 			}
 			set
 			{
-				_showScrollBar = value;
+				_isShowScrollBar = value;
 
 				RecalculateColumnWidths();
 				Invalidate();
@@ -504,6 +488,38 @@ namespace Com.AiricLenz.XTB.Components
 				Invalidate();
 			}
 		}
+
+		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		public bool IsBoldWhenChecked
+		{
+			get
+			{
+				return _isBoldWhenCheck;
+			}
+			set
+			{
+				_isBoldWhenCheck = value;
+
+				Invalidate();
+			}
+		}
+
+		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		public bool ShowOnlyCheckedItems
+		{
+			get
+			{
+				return _isShowOnlyCheckedItems;
+			}
+			set
+			{
+				_isShowOnlyCheckedItems = value;
+
+				ApplyFilter();
+				Invalidate();
+			}
+		}
+
 
 
 		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -853,7 +869,7 @@ namespace Com.AiricLenz.XTB.Components
 
 								g.DrawString(
 									propertyString,
-									isChecked ? new Font(Font, FontStyle.Bold) : Font,
+									isChecked && _isBoldWhenCheck ? new Font(Font, FontStyle.Bold) : Font,
 									brushText,
 									new RectangleF(
 										colPosX,
@@ -913,7 +929,7 @@ namespace Com.AiricLenz.XTB.Components
 					g.FillRectangle(
 						brushBurgerLines,
 						new RectangleF(
-							Width - (_showScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
+							Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
 							yPosition + marginTopBurger,
 							_dragBurgerSize * 2f,
 							_dragBurgerLineThickness));
@@ -921,7 +937,7 @@ namespace Com.AiricLenz.XTB.Components
 					g.FillRectangle(
 						brushBurgerLines,
 						new RectangleF(
-							Width - (_showScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
+							Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
 							yPosition + (_itemHeight / 2f) - (_dragBurgerLineThickness / 2f),
 							_dragBurgerSize * 2f,
 							_dragBurgerLineThickness));
@@ -929,7 +945,7 @@ namespace Com.AiricLenz.XTB.Components
 					g.FillRectangle(
 						brushBurgerLines,
 						new RectangleF(
-							Width - (_showScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
+							Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
 							yPosition + marginTopBurger + _dragBurgerSize - _dragBurgerLineThickness,
 							_dragBurgerSize * 2f,
 							_dragBurgerLineThickness));
@@ -945,7 +961,7 @@ namespace Com.AiricLenz.XTB.Components
 			}
 
 			// paint the scroll bar
-			if (_showScrollBar)
+			if (_isShowScrollBar)
 			{
 				int totalItemsHeight = (_items.Count + 1) * _itemHeight;
 				int clientHeight = this.ClientRectangle.Height - 7;
@@ -1233,7 +1249,7 @@ namespace Com.AiricLenz.XTB.Components
 				this.Width -
 				leftMargin -
 				(_isSortable ? (_dragBurgerSize * 2) + 6 : 0) -
-				(_showScrollBar ? 8 : 0);
+				(_isShowScrollBar ? 8 : 0);
 		}
 
 
@@ -1302,6 +1318,11 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		public void CheckAllItems()
 		{
+			foreach (var item in _allItems)
+			{
+				item.IsChecked = true;
+			}
+
 			foreach (var item in _items)
 			{
 				item.IsChecked = true;
@@ -1314,6 +1335,11 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		public void UnCheckAllItems()
 		{
+			foreach (var item in _allItems)
+			{
+				item.IsChecked = false;
+			}
+
 			foreach (var item in _items)
 			{
 				item.IsChecked = false;
@@ -1327,6 +1353,11 @@ namespace Com.AiricLenz.XTB.Components
 		public void InvertCheckOfAllItems()
 		{
 			foreach (var item in _items)
+			{
+				item.IsChecked = !item.IsChecked;
+			}
+
+			foreach (var item in _allItems)
 			{
 				item.IsChecked = !item.IsChecked;
 			}
@@ -1831,59 +1862,89 @@ namespace Com.AiricLenz.XTB.Components
 
 		}
 
+        // ============================================================================
+        // Update ApplyFilter to AND-join _isShowOnlyCheckedItems with existing filter
+        private bool ApplyFilter()
+        {
+            if (_allItems == null)
+            {
+                return false;
+            }
+
+            // No filter? Show everything, but respect ShowOnlyCheckedItems
+            if (_filter == null ||
+                string.IsNullOrWhiteSpace(_filter.FilterOnProperty) ||
+                string.IsNullOrWhiteSpace(_filter.FilterString))
+            {
+                if (_isShowOnlyCheckedItems)
+                {
+                    _items = _allItems.Where(item => item.IsChecked).ToList();
+                }
+                else
+                {
+                    _items = new List<SortableCheckItem>(_allItems);
+                }
+                ClampScrollOffset();
+                return true;
+            }
+
+            string filterValue = _filter.FilterString;
+            Func<string, bool> predicate = _ => true;
+
+            switch (_filter.ConditionOperator)
+            {
+                case ConditionOperator.Equals:
+                    predicate = s => string.Equals(s, filterValue, StringComparison.OrdinalIgnoreCase);
+                    break;
+                case ConditionOperator.Contains:
+                    predicate = s => s?.IndexOf(filterValue, StringComparison.OrdinalIgnoreCase) >= 0;
+                    break;
+                case ConditionOperator.StartsWith:
+                    predicate = s => s?.StartsWith(filterValue, StringComparison.OrdinalIgnoreCase) == true;
+                    break;
+                case ConditionOperator.EndsWith:
+                    predicate = s => s?.EndsWith(filterValue, StringComparison.OrdinalIgnoreCase) == true;
+                    break;
+            }
+
+            _items =
+                _allItems.Where(item =>
+                {
+                    var propObj = GetPropertyValue(item.ItemObject, _filter.FilterOnProperty);
+                    string propStr = propObj?.ToString() ?? string.Empty;
+                    bool matchesFilter = predicate(propStr);
+                    bool matchesChecked = !_isShowOnlyCheckedItems || item.IsChecked;
+                    return matchesFilter && matchesChecked;
+                })
+                .ToList();
+
+            ClampScrollOffset();
+            return true;
+        }
+
+
 		// ============================================================================
-		private bool ApplyFilter()
-		{
-			if (_allItems == null)
-			{
-				return false;
-			}
+        private void SyncAllItemsOrder()
+        {
+            if (_allItems == null || 
+				_items == null)
+            {
+                return;
+            }
 
-			// No filter?  Show everything.
-			if (_filter == null ||
-				string.IsNullOrWhiteSpace(_filter.FilterOnProperty) ||
-				string.IsNullOrWhiteSpace(_filter.FilterString))
-			{
-				_items = new List<SortableCheckItem>(_allItems);
-				ClampScrollOffset();
-				return true;
-			}
+            // Rank visible items by their current order
+            var rank = _items
+                .Select((item, idx) => new { item, idx })
+                .ToDictionary(x => x.item, x => x.idx);
 
-			string filterValue = _filter.FilterString;
-			Func<string, bool> predicate = _ => true;
-
-			switch (_filter.ConditionOperator)
-			{
-				case ConditionOperator.Equals:
-					predicate = s => string.Equals(s, filterValue, StringComparison.OrdinalIgnoreCase);
-					break;
-				case ConditionOperator.Contains:
-					predicate = s => s?.IndexOf(filterValue, StringComparison.OrdinalIgnoreCase) >= 0;
-					break;
-				case ConditionOperator.StartsWith:
-					predicate = s => s?.StartsWith(filterValue, StringComparison.OrdinalIgnoreCase) == true;
-					break;
-				case ConditionOperator.EndsWith:
-					predicate = s => s?.EndsWith(filterValue, StringComparison.OrdinalIgnoreCase) == true;
-					break;
-			}
-
-			_items =
-				_allItems.Where(item =>
-				{
-					var propObj = GetPropertyValue(item.ItemObject, _filter.FilterOnProperty);
-					string propStr = propObj?.ToString() ?? string.Empty;
-					return predicate(propStr);
-				})
-				.ToList();
-
-			ClampScrollOffset();
-			return true;
-		}
+            // Stable sort: visible items first (new order), then the rest
+            _allItems = _allItems
+                .OrderBy(item => rank.TryGetValue(item, out int r) ? r : int.MaxValue)
+                .ToList();
+        }
 
 
-		// ============================================================================
-		// Keep the master list (_allItems) in the same order as the visible list
+		/*
 		// ============================================================================
 		private void SyncAllItemsOrder()
 		{
@@ -1903,11 +1964,14 @@ namespace Com.AiricLenz.XTB.Components
 					.OrderBy(item => rank.TryGetValue(item, out int r) ? r : int.MaxValue)
 					.ToList();
 		}
-
+		*/
 
 		#endregion
 
 	}
+
+	// ##################################################
+	// ##################################################
 
 	#region Supporting Classes
 
