@@ -24,6 +24,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Helper Classes\" />
     <Folder Include="$(MSBuildThisFileDirectory)Sortable Checklist\" />
   </ItemGroup>
 </Project>
