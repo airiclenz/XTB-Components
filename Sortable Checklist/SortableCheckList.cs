@@ -139,6 +139,14 @@ namespace Com.AiricLenz.XTB.Components
 		}
 
 		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		[Browsable(false)]
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public List<SortableCheckItem> FilteredItems
+		{
+			get => _items;
+		}
+
+		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		[Browsable(true)]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public List<ColumnDefinition> Columns
@@ -707,7 +715,7 @@ namespace Com.AiricLenz.XTB.Components
 		/// <summary>
 		/// Triggers whenever an item is checked or unchecked.
 		/// </summary>
-		public event EventHandler ItemChecked;
+		public event EventHandler<ItemEventArgs> ItemChecked;
 
 		/// <summary>
 		/// Triggers if the order of the items has be changed.
@@ -737,7 +745,7 @@ namespace Com.AiricLenz.XTB.Components
 					Color.FromArgb(10, ColorHelper.MixColors(_colorOn, 0.7, Color.Black)));
 
 			var checkerRadius = _checkBoxRadius * 0.5f;
-			var marginTopText = (_itemHeight - _textHeight) / 2f;
+			var marginTopText = ((_itemHeight - _textHeight) / 2f);
 			var marginTopBurger = (_itemHeight - _dragBurgerSize) / 2f;
 			var marginTopCheckBox = (_itemHeight - _checkBoxSize) / 2f;
 
@@ -781,7 +789,7 @@ namespace Com.AiricLenz.XTB.Components
 						new Font(Font, FontStyle.Bold),
 						Brushes.White,
 						colPosX,
-						marginTopText);
+						marginTopText + 1);
 
 					colPosX += colWidth;
 				}
@@ -808,7 +816,7 @@ namespace Com.AiricLenz.XTB.Components
 				var isChecked = _items[i].IsChecked && _isCheckable;
 				var isSelected = i == _selectedIndex;
 
-				var brushRow = isSelected ? new SolidBrush(SystemColors.Highlight) : (isChecked ? brushCheckedRow : Brushes.White);
+				var brushRow = isSelected ? new SolidBrush(Color.FromArgb(210, SystemColors.Highlight)) : (isChecked ? brushCheckedRow : Brushes.White);
 				var brushText = isSelected ? new SolidBrush(SystemColors.HighlightText) : new SolidBrush(ForeColor);
 				var hoveringThisCheckBox = _hoveringAboveCheckBoxIndex == i;
 
@@ -816,6 +824,7 @@ namespace Com.AiricLenz.XTB.Components
 					isChecked ?
 					ColorHelper.MixColors(_colorOn, (isSelected ? 0.2 : 0), Color.White) :
 					_colorOff;
+
 				var penCheckBoxFrame =
 					isSelected ?
 					new Pen(Color.FromArgb(210, Color.Black), hoveringThisCheckBox ? 2f : 1.5f) :
@@ -853,9 +862,10 @@ namespace Com.AiricLenz.XTB.Components
 								var imageWidth = propertyBitmap.Width * ratio;
 								var marginTop = (_itemHeight - imageHeight) / 2;
 
+
 								g.DrawImage(
 									propertyBitmap,
-									colPosX,
+									colPosX + column.MarginLeft,
 									yPosition + marginTopText,
 									imageWidth,
 									imageHeight);
@@ -866,11 +876,11 @@ namespace Com.AiricLenz.XTB.Components
 
 								g.DrawString(
 									propertyString,
-									isChecked && _isBoldWhenCheck ? new Font(Font, FontStyle.Bold) : Font,
+									(isChecked && _isBoldWhenCheck) || isSelected ? new Font(Font, FontStyle.Bold) : Font,
 									brushText,
 									new RectangleF(
 										colPosX,
-										yPosition + marginTopText,
+										yPosition + marginTopText + 1,
 										colWidth,
 										_textHeight));
 							}
@@ -1030,21 +1040,29 @@ namespace Com.AiricLenz.XTB.Components
 		}
 
 		// ============================================================================
-		protected virtual void OnItemChecked()
-		{
-			ItemChecked?.Invoke(this, ItemCheckEventArgs.Empty);
-		}
+		protected virtual void OnItemChecked(SortableCheckItem item = null)
+        {
+            if (item != null)
+            {
+                var eventArgs = new ItemEventArgs(item);
+                ItemChecked?.Invoke(this, eventArgs);
+            }
+            else
+            {
+                ItemChecked?.Invoke(this, ItemEventArgs.Empty);
+            }
+        }
 
 		// ============================================================================
 		protected virtual void OnItemOrderChanged()
 		{
-			ItemOrderChanged?.Invoke(this, ItemCheckEventArgs.Empty);
+			ItemOrderChanged?.Invoke(this, EventArgs.Empty);
 		}
 
 		// ============================================================================
 		protected virtual void OnSortingColumnChanged()
 		{
-			SortingColumnChanged?.Invoke(this, ItemCheckEventArgs.Empty);
+			SortingColumnChanged?.Invoke(this, EventArgs.Empty);
 		}
 
 
@@ -1204,6 +1222,18 @@ namespace Com.AiricLenz.XTB.Components
 		// ##################################################
 
 		#region Custom Logic
+
+
+		// ============================================================================
+		public override void Refresh()
+		{
+			base.Refresh();
+
+			ApplyFilter();
+			ClampScrollOffset();
+			Invalidate();
+		}
+
 
 
 		// ============================================================================
@@ -1396,7 +1426,7 @@ namespace Com.AiricLenz.XTB.Components
 			}
 
 			_items[_selectedIndex].Toggle();
-			OnItemChecked();
+			OnItemChecked(_items[_selectedIndex]);
 			Invalidate();
 
 		}
@@ -1771,7 +1801,7 @@ namespace Com.AiricLenz.XTB.Components
 					if (isClick)
 					{
 						_items[mouseOverRowWithIndex].Toggle();
-						OnItemChecked();
+						OnItemChecked(_items[mouseOverRowWithIndex]);
 					}
 					else
 					{
@@ -1868,8 +1898,17 @@ namespace Com.AiricLenz.XTB.Components
                 return false;
             }
 
-            // No filter? Show everything, but respect ShowOnlyCheckedItems
-            if (_filter == null ||
+			// Store the previously selected item (by reference)
+			object prevSelectedItem = null;
+
+			if (_selectedIndex >= 0 && 
+				_selectedIndex < _items.Count)
+			{
+				prevSelectedItem = _items[_selectedIndex].ItemObject;
+			}
+
+			// No filter? Show everything, but respect ShowOnlyCheckedItems
+			if (_filter == null ||
                 string.IsNullOrWhiteSpace(_filter.FilterOnProperty) ||
                 string.IsNullOrWhiteSpace(_filter.FilterString))
             {
@@ -1881,7 +1920,10 @@ namespace Com.AiricLenz.XTB.Components
                 {
                     _items = new List<SortableCheckItem>(_allItems);
                 }
-                ClampScrollOffset();
+
+				UpdateSelectionAfterFilter(prevSelectedItem);
+				ClampScrollOffset();
+
                 return true;
             }
 
@@ -1915,13 +1957,41 @@ namespace Com.AiricLenz.XTB.Components
                 })
                 .ToList();
 
-            ClampScrollOffset();
+			UpdateSelectionAfterFilter(prevSelectedItem);
+			ClampScrollOffset();
             return true;
         }
 
+		// ============================================================================
+		/// <summary>
+		/// Helper method to update selection after filtering
+		/// </summary>
+		/// <param name="prevSelectedItem"></param>
+		private void UpdateSelectionAfterFilter(object prevSelectedItem)
+		{
+			bool prevSelectedHasValue = prevSelectedItem != null;
+
+			if (prevSelectedItem == null)
+			{
+				_selectedIndex = -1;
+				return;
+			}
+
+			// Find the index of the previous item in the new filtered list
+			int newIndex = _items.FindIndex(item => Equals(item.ItemObject, prevSelectedItem));
+			_selectedIndex = newIndex;
+
+
+			if ((prevSelectedHasValue && 
+				_selectedIndex == -1))
+			{
+				OnSelectedIndexChanged();
+			}
+		}
+
 
 		// ============================================================================
-        private void SyncAllItemsOrder()
+		private void SyncAllItemsOrder()
         {
             if (_allItems == null || 
 				_items == null)
@@ -2129,6 +2199,16 @@ namespace Com.AiricLenz.XTB.Components
 		}
 
 		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		/// <summary>
+		/// This poroperty allows for aligning  images if the property value is a bitmap.
+		/// This is ignored for text values.
+		/// </summary>
+		public int MarginLeft
+		{
+			get; set;
+		} = 0;
+
+		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		public string TooltipText
 		{
 			get; set;
@@ -2219,6 +2299,9 @@ namespace Com.AiricLenz.XTB.Components
 			out int resultNumber)
 		{
 			widthString = widthString.Trim().ToLower();
+			widthString = widthString.Replace(" ", "");
+			widthString = widthString.ToLower();
+
 			var workString = widthString;
 
 			if (workString.EndsWith("px"))
@@ -2274,8 +2357,8 @@ namespace Com.AiricLenz.XTB.Components
 			{
 				// Use the header text Visual Studio designers should display.
 				return string.IsNullOrWhiteSpace(col.Header)
-					   ? col.GetType().Name
-					   : col.Header;
+						? col.PropertyName
+						: col.Header;
 			}
 
 			return base.ConvertTo(context, culture, value, destinationType);
@@ -2351,6 +2434,27 @@ namespace Com.AiricLenz.XTB.Components
 		EndsWith
 	}
 
+
+	// ============================================================================
+	// ============================================================================
+	// ============================================================================
+	public class ItemEventArgs : EventArgs
+	{
+
+		public new static readonly ItemEventArgs Empty = new ItemEventArgs(null);
+
+		// ============================================================================
+		public SortableCheckItem Item
+		{
+			get;
+		}
+
+		// ============================================================================
+		public ItemEventArgs(SortableCheckItem item)
+		{
+			Item = item;
+		}
+	}
 
 
 	#endregion
