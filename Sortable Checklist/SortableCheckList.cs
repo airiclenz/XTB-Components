@@ -2047,24 +2047,45 @@ namespace Com.AiricLenz.XTB.Components
 	// ============================================================================
 	[Serializable]
 	[TypeConverter(typeof(ColumnDefinitionConverter))]
-	public class SortableCheckItem : IComparable<SortableCheckItem>
+	public sealed class SortableCheckItem :
+		INotifyPropertyChanged,
+		IComparable<SortableCheckItem>
 	{
-
-		private object _item;
 		private bool _isChecked;
 		private int _sortingIndex;
 		private string _title;
+
+		private object _itemObject;		// the wrapped item (any type)
+		private string _linkedProperty;	// null → no external link
+		private bool _localChecked;					// fallback storage
 
 
 
 		// ============================================================================
 		public SortableCheckItem(
-			object item)
+			object itemObject, 
+			string linkedPropertyName = null)
 		{
-			_item = item;
+			if (itemObject == null)
+			{
+				throw new ArgumentNullException(nameof(itemObject));
+			}
+				
+			_itemObject = itemObject;
 			_isChecked = false;
-			_title = item.ToString();
+			_title = itemObject.ToString();
+			_linkedProperty = linkedPropertyName;          
+
+			// If the wrapped item notifies, attach a listener (only when we have a link).
+			var notifier = itemObject as INotifyPropertyChanged;
+			if (notifier != null && _linkedProperty != null)
+				notifier.PropertyChanged += HandleItemObjectChanged;
 		}
+
+
+		
+		///////////////////////////////////////////////////////////////////////////////
+		public event PropertyChangedEventHandler PropertyChanged;
 
 
 		// ============================================================================
@@ -2072,12 +2093,11 @@ namespace Com.AiricLenz.XTB.Components
 			object item,
 			int sortingIndex)
 		{
-			_item = item;
+			_itemObject = item;
 			_sortingIndex = sortingIndex;
 			_isChecked = false;
 			_title = item.ToString();
 		}
-
 
 
 
@@ -2099,11 +2119,11 @@ namespace Com.AiricLenz.XTB.Components
 		{
 			get
 			{
-				return _item;
+				return _itemObject;
 			}
 			set
 			{
-				_item = value;
+				_itemObject = value;
 			}
 		}
 
@@ -2112,13 +2132,53 @@ namespace Com.AiricLenz.XTB.Components
 		{
 			get
 			{
-				return _isChecked;
+				if (_linkedProperty == null)
+				{
+					return _localChecked;
+				}
+				
+				var linkedPorperty = _itemObject.GetType().GetProperty(_linkedProperty);
+
+				if (linkedPorperty == null ||
+					linkedPorperty.PropertyType != typeof(bool))
+				{
+				
+					throw new InvalidOperationException(
+						"Linked property not found or not Boolean.");
+				}
+
+				return (bool) linkedPorperty.GetValue(_itemObject, null);
 			}
+
 			set
 			{
-				_isChecked = value;
+				if (value == IsChecked)
+				{
+					return;
+				}
+
+				if (_linkedProperty == null)
+				{
+					_localChecked = value;
+				}
+				else
+				{
+					var pi = _itemObject.GetType().GetProperty(_linkedProperty);
+
+					if (pi == null ||
+						pi.PropertyType != typeof(bool))
+					{
+						throw new InvalidOperationException(
+							"Linked property not found or not Boolean.");
+					}
+
+					pi.SetValue(_itemObject, value, null);
+				}
+
+				OnPropertyChanged(nameof(IsChecked));
 			}
 		}
+
 
 		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		public int SortingIndex
@@ -2134,7 +2194,8 @@ namespace Com.AiricLenz.XTB.Components
 		}
 
 		// ============================================================================
-		public int CompareTo(SortableCheckItem other)
+		public int CompareTo(
+			SortableCheckItem other)
 		{
 			return this.SortingIndex.CompareTo(other.SortingIndex);
 		}
@@ -2142,8 +2203,35 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		public bool Toggle()
 		{
-			_isChecked = !_isChecked;
-			return _isChecked;
+			IsChecked = !IsChecked;
+			return IsChecked;
+		}
+
+		// ============================================================================
+		private void HandleItemObjectChanged(
+			object sender, 
+			PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName != _linkedProperty)
+			{
+				return;
+			}
+			
+			OnPropertyChanged(e.PropertyName);
+		}
+
+		// ============================================================================
+		private void OnPropertyChanged(
+			string propertyName)
+		{
+			var handler = PropertyChanged;
+
+			if (handler != null)
+			{
+				handler(
+					this, 
+					new PropertyChangedEventArgs(propertyName));
+			}
 		}
 
 	}
