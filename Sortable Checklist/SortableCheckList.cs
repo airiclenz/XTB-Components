@@ -1901,7 +1901,7 @@ namespace Com.AiricLenz.XTB.Components
 			// Store the previously selected item (by reference)
 			object prevSelectedItem = null;
 
-			if (_selectedIndex >= 0 && 
+			if (_selectedIndex >= 0 &&
 				_selectedIndex < _items.Count)
 			{
 				prevSelectedItem = _items[_selectedIndex].ItemObject;
@@ -1982,7 +1982,7 @@ namespace Com.AiricLenz.XTB.Components
 			_selectedIndex = newIndex;
 
 
-			if ((prevSelectedHasValue && 
+			if ((prevSelectedHasValue &&
 				_selectedIndex == -1))
 			{
 				OnSelectedIndexChanged();
@@ -1993,7 +1993,7 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		private void SyncAllItemsOrder()
         {
-            if (_allItems == null || 
+			if (_allItems == null ||
 				_items == null)
             {
                 return;
@@ -2063,18 +2063,18 @@ namespace Com.AiricLenz.XTB.Components
 
 		// ============================================================================
 		public SortableCheckItem(
-			object itemObject, 
+			object itemObject,
 			string linkedPropertyName = null)
 		{
 			if (itemObject == null)
 			{
 				throw new ArgumentNullException(nameof(itemObject));
 			}
-				
+
 			_itemObject = itemObject;
 			_isChecked = false;
 			_title = itemObject.ToString();
-			_linkedProperty = linkedPropertyName;          
+			_linkedProperty = linkedPropertyName;
 
 			// If the wrapped item notifies, attach a listener (only when we have a link).
 			var notifier = itemObject as INotifyPropertyChanged;
@@ -2083,7 +2083,7 @@ namespace Com.AiricLenz.XTB.Components
 		}
 
 
-		
+
 		///////////////////////////////////////////////////////////////////////////////
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -2136,13 +2136,13 @@ namespace Com.AiricLenz.XTB.Components
 				{
 					return _localChecked;
 				}
-				
+
 				var linkedPorperty = _itemObject.GetType().GetProperty(_linkedProperty);
 
 				if (linkedPorperty == null ||
 					linkedPorperty.PropertyType != typeof(bool))
 				{
-				
+
 					throw new InvalidOperationException(
 						"Linked property not found or not Boolean.");
 				}
@@ -2209,14 +2209,14 @@ namespace Com.AiricLenz.XTB.Components
 
 		// ============================================================================
 		private void HandleItemObjectChanged(
-			object sender, 
+			object sender,
 			PropertyChangedEventArgs e)
 		{
 			if (e.PropertyName != _linkedProperty)
 			{
 				return;
 			}
-			
+
 			OnPropertyChanged(e.PropertyName);
 		}
 
@@ -2229,7 +2229,7 @@ namespace Com.AiricLenz.XTB.Components
 			if (handler != null)
 			{
 				handler(
-					this, 
+					this,
 					new PropertyChangedEventArgs(propertyName));
 			}
 		}
