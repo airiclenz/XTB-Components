@@ -34,7 +34,6 @@ namespace Com.AiricLenz.XTB.Components
 		private bool _showToolTips = true;
 
 		private List<SortableCheckItem> _items = new List<SortableCheckItem>();
-		private List<SortableCheckItem> _allItems = new List<SortableCheckItem>();
 		private List<ColumnDefinition> _columns = new List<ColumnDefinition>();
 
 		private int _itemHeight = 20;
@@ -125,26 +124,24 @@ namespace Com.AiricLenz.XTB.Components
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public List<SortableCheckItem> Items
 		{
-			get => _allItems;
+			get => _items;
 			set
 			{
-				_allItems = value ?? new List<SortableCheckItem>();
-				_items = new List<SortableCheckItem>(_allItems);
-
+				_items = value ?? new List<SortableCheckItem>();
 				RecalculateColumnWidths();
-				ApplyFilter();
+				ApplyFilter();     // sets IsFilteredOut flags
 				Invalidate();
 				SyncJsonProperties();
 			}
 		}
 
+		/*
 		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		[Browsable(false)]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public List<SortableCheckItem> FilteredItems
-		{
-			get => _items;
-		}
+    		=> _items.Where(it => !it.IsFilteredOut).ToList();
+		*/
 
 		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		[Browsable(true)]
@@ -735,6 +732,7 @@ namespace Com.AiricLenz.XTB.Components
 		{
 			base.OnPaint(e);
 
+			int visibleCount = GetVisibleItemCount();
 
 			Graphics g = e.Graphics;
 			g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -802,7 +800,7 @@ namespace Com.AiricLenz.XTB.Components
 			int startIndex = _scrollOffset / _itemHeight;
 			int endIndex =
 				Math.Min(
-					_items.Count,
+					visibleCount,
 					startIndex + ((Height - _itemHeight) / _itemHeight));
 
 
@@ -970,7 +968,7 @@ namespace Com.AiricLenz.XTB.Components
 			// paint the scroll bar
 			if (_isShowScrollBar)
 			{
-				int totalItemsHeight = (_items.Count + 1) * _itemHeight;
+				int totalItemsHeight = (visibleCount + 1) * _itemHeight;
 				int clientHeight = this.ClientRectangle.Height - 7;
 
 				// Calculate the length and position of the scrollbar
@@ -1100,7 +1098,6 @@ namespace Com.AiricLenz.XTB.Components
 			_scrollOffset -= e.Delta / 120 * _itemHeight;
 
 			ClampScrollOffset();
-
 			Invalidate();
 		}
 
@@ -1185,6 +1182,7 @@ namespace Com.AiricLenz.XTB.Components
 				_dragStartIndex.HasValue)
 			{
 				int newIndex = GetItemAtPoint(e.Location);
+
 				if (newIndex != -1 && newIndex != _currentDropIndex)
 				{
 					_currentDropIndex = newIndex;
@@ -1290,7 +1288,7 @@ namespace Com.AiricLenz.XTB.Components
 						_scrollOffset,
 						Math.Max(
 							0,
-							(_items.Count * _itemHeight) - (Height - _itemHeight))));
+							(GetVisibleItemCount() * _itemHeight) - (Height - _itemHeight))));
 
 			_scrollOffset = RoundUpToNextMultiple(_scrollOffset, _itemHeight);
 		}
@@ -1308,7 +1306,7 @@ namespace Com.AiricLenz.XTB.Components
 			Point location)
 		{
 			// Calculate which item is at the given location
-			for (int i = 0; i < _items.Count; i++)
+			for (int i = 0; i < GetVisibleItemCount(); i++)
 			{
 				if (GetItemBounds(i).Contains(location))
 				{
@@ -1345,11 +1343,6 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		public void CheckAllItems()
 		{
-			foreach (var item in _allItems)
-			{
-				item.IsChecked = true;
-			}
-
 			foreach (var item in _items)
 			{
 				item.IsChecked = true;
@@ -1362,11 +1355,6 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		public void UnCheckAllItems()
 		{
-			foreach (var item in _allItems)
-			{
-				item.IsChecked = false;
-			}
-
 			foreach (var item in _items)
 			{
 				item.IsChecked = false;
@@ -1380,11 +1368,6 @@ namespace Com.AiricLenz.XTB.Components
 		public void InvertCheckOfAllItems()
 		{
 			foreach (var item in _items)
-			{
-				item.IsChecked = !item.IsChecked;
-			}
-
-			foreach (var item in _allItems)
 			{
 				item.IsChecked = !item.IsChecked;
 			}
@@ -1408,7 +1391,7 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		private void SelectNextItem()
 		{
-			if (_selectedIndex < _items.Count - 1)
+			if (_selectedIndex < GetVisibleItemCount() - 1)
 			{
 				_selectedIndex++;
 				EnsureItemVisible(_selectedIndex);
@@ -1452,7 +1435,7 @@ namespace Com.AiricLenz.XTB.Components
 			int index)
 		{
 			if (index < 0 ||
-				index > _items.Count)
+				index > GetVisibleItemCount())
 			{
 				return;
 			}
@@ -1478,7 +1461,7 @@ namespace Com.AiricLenz.XTB.Components
 		{
 			var noData =
 				_items == null ||
-				_items.Count == 0;
+				GetVisibleItemCount() == 0;
 
 			var supposedBackground = noData ? _noDataImage : null;
 
@@ -1740,8 +1723,9 @@ namespace Com.AiricLenz.XTB.Components
 			}
 
 			// do some initialization first
+			int visibleCount = GetVisibleItemCount();
 			int startIndex = _scrollOffset / _itemHeight;
-			int endIndex = Math.Min(_items.Count, startIndex + ((Height - _itemHeight) / _itemHeight));
+			int endIndex = Math.Min(visibleCount, startIndex + ((Height - _itemHeight) / _itemHeight));
 
 			var _hoverCheckBoxIndexOld = _hoveringAboveCheckBoxIndex;
 			var _hoverDragBurgerIndexOld = _hoveringAboveDragBurgerIndex;
@@ -1893,81 +1877,93 @@ namespace Com.AiricLenz.XTB.Components
         // Update ApplyFilter to AND-join _isShowOnlyCheckedItems with existing filter
         private bool ApplyFilter()
         {
-            if (_allItems == null)
-            {
-                return false;
-            }
+			if (_items == null)
+				return false;
 
-			// Store the previously selected item (by reference)
-			object prevSelectedItem = null;
+			object prevSelection =
+				(
+					_selectedIndex >= 0 &&
+					_selectedIndex < _items.Count
+				)
+				? _items[_selectedIndex].ItemObject
+				: null;
 
-			if (_selectedIndex >= 0 &&
-				_selectedIndex < _items.Count)
+			// reset flags
+			foreach (var it in _items)
 			{
-				prevSelectedItem = _items[_selectedIndex].ItemObject;
+				it.IsFilteredOut = false;
 			}
 
-			// No filter? Show everything, but respect ShowOnlyCheckedItems
-			if (_filter == null ||
-                string.IsNullOrWhiteSpace(_filter.FilterOnProperty) ||
-                string.IsNullOrWhiteSpace(_filter.FilterString))
-            {
-                if (_isShowOnlyCheckedItems)
-                {
-                    _items = _allItems.Where(item => item.IsChecked).ToList();
-                }
-                else
-                {
-                    _items = new List<SortableCheckItem>(_allItems);
-                }
+			bool hasTextFilter =
+				_filter != null &&
+				!string.IsNullOrWhiteSpace(_filter.FilterOnProperty) &&
+				!string.IsNullOrWhiteSpace(_filter.FilterString);
 
-				UpdateSelectionAfterFilter(prevSelectedItem);
+			if (!hasTextFilter &&
+				!_isShowOnlyCheckedItems)
+			{
+				UpdateSelectionAfterFilter(prevSelection);
 				ClampScrollOffset();
+				return true;
+			}
 
-                return true;
-            }
+			string needle = _filter?.FilterString ?? string.Empty;
+			Func<string, bool> predicate = _ => true;
 
-            string filterValue = _filter.FilterString;
-            Func<string, bool> predicate = _ => true;
+			if (hasTextFilter)
+			{
+				switch (_filter.ConditionOperator)
+				{
+					case ConditionOperator.Equals:
+						predicate = s => string.Equals(s, needle, StringComparison.OrdinalIgnoreCase);
+						break;
+					case ConditionOperator.Contains:
+						predicate = s => s?.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
+						break;
+					case ConditionOperator.StartsWith:
+						predicate = s => s?.StartsWith(needle, StringComparison.OrdinalIgnoreCase) == true;
+						break;
+					case ConditionOperator.EndsWith:
+						predicate = s => s?.EndsWith(needle, StringComparison.OrdinalIgnoreCase) == true;
+						break;
+				}
+			}
 
-            switch (_filter.ConditionOperator)
-            {
-                case ConditionOperator.Equals:
-                    predicate = s => string.Equals(s, filterValue, StringComparison.OrdinalIgnoreCase);
-                    break;
-                case ConditionOperator.Contains:
-                    predicate = s => s?.IndexOf(filterValue, StringComparison.OrdinalIgnoreCase) >= 0;
-                    break;
-                case ConditionOperator.StartsWith:
-                    predicate = s => s?.StartsWith(filterValue, StringComparison.OrdinalIgnoreCase) == true;
-                    break;
-                case ConditionOperator.EndsWith:
-                    predicate = s => s?.EndsWith(filterValue, StringComparison.OrdinalIgnoreCase) == true;
-                    break;
-            }
+			foreach (var item in _items)
+			{
+				bool match = !hasTextFilter ||
+							predicate((GetPropertyValue(item.ItemObject, _filter.FilterOnProperty)?.ToString()) ?? string.Empty);
+				bool checkedOk = !_isShowOnlyCheckedItems || item.IsChecked;
 
-            _items =
-                _allItems.Where(item =>
-                {
-                    var propObj = GetPropertyValue(item.ItemObject, _filter.FilterOnProperty);
-                    string propStr = propObj?.ToString() ?? string.Empty;
-                    bool matchesFilter = predicate(propStr);
-                    bool matchesChecked = !_isShowOnlyCheckedItems || item.IsChecked;
-                    return matchesFilter && matchesChecked;
-                })
-                .ToList();
+				item.IsFilteredOut = !(match && checkedOk);
+			}
 
-			UpdateSelectionAfterFilter(prevSelectedItem);
+			// keep existing visual order but push hidden items to the back
+			_items =
+				_items.OrderBy(i => i.IsFilteredOut)
+					.ThenBy(i => i.SortingIndex)
+					.ToList();
+
+			UpdateSelectionAfterFilter(prevSelection);
 			ClampScrollOffset();
-            return true;
-        }
+			return true;
+		}
+
+
+		// ============================================================================
+		private int GetVisibleItemCount()
+		{
+			return _items.Count(it => !it.IsFilteredOut);
+		}
+
 
 		// ============================================================================
 		/// <summary>
 		/// Helper method to update selection after filtering
 		/// </summary>
 		/// <param name="prevSelectedItem"></param>
-		private void UpdateSelectionAfterFilter(object prevSelectedItem)
+		private void UpdateSelectionAfterFilter(
+			object prevSelectedItem)
 		{
 			bool prevSelectedHasValue = prevSelectedItem != null;
 
@@ -1978,9 +1974,13 @@ namespace Com.AiricLenz.XTB.Components
 			}
 
 			// Find the index of the previous item in the new filtered list
-			int newIndex = _items.FindIndex(item => Equals(item.ItemObject, prevSelectedItem));
-			_selectedIndex = newIndex;
+			int newIndex =
+			_items
+				.Where(it => !it.IsFilteredOut)
+				.ToList()
+				.FindIndex(it => Equals(it.ItemObject, prevSelectedItem));
 
+			_selectedIndex = newIndex;
 
 			if ((prevSelectedHasValue &&
 				_selectedIndex == -1))
@@ -1988,50 +1988,6 @@ namespace Com.AiricLenz.XTB.Components
 				OnSelectedIndexChanged();
 			}
 		}
-
-
-		// ============================================================================
-		private void SyncAllItemsOrder()
-        {
-			if (_allItems == null ||
-				_items == null)
-            {
-                return;
-            }
-
-            // Rank visible items by their current order
-            var rank = _items
-                .Select((item, idx) => new { item, idx })
-                .ToDictionary(x => x.item, x => x.idx);
-
-            // Stable sort: visible items first (new order), then the rest
-            _allItems = _allItems
-                .OrderBy(item => rank.TryGetValue(item, out int r) ? r : int.MaxValue)
-                .ToList();
-        }
-
-
-		/*
-		// ============================================================================
-		private void SyncAllItemsOrder()
-		{
-			if (_allItems == null ||
-				_items == null)
-			{
-				return;
-			}
-
-			// Rank visible items by their current order
-			var rank = _items
-					.Select((item, idx) => new { item, idx })
-					.ToDictionary(x => x.item, x => x.idx);
-
-			// Stable sort: visible items first (new order), then the rest
-			_allItems = _allItems
-					.OrderBy(item => rank.TryGetValue(item, out int r) ? r : int.MaxValue)
-					.ToList();
-		}
-		*/
 
 		#endregion
 
@@ -2052,6 +2008,7 @@ namespace Com.AiricLenz.XTB.Components
 		IComparable<SortableCheckItem>
 	{
 		private bool _isChecked;
+		private bool _isFilteredOut;
 		private int _sortingIndex;
 		private string _title;
 
@@ -2075,18 +2032,13 @@ namespace Com.AiricLenz.XTB.Components
 			_isChecked = false;
 			_title = itemObject.ToString();
 			_linkedProperty = linkedPropertyName;
+			_isFilteredOut = false;
 
 			// If the wrapped item notifies, attach a listener (only when we have a link).
 			var notifier = itemObject as INotifyPropertyChanged;
 			if (notifier != null && _linkedProperty != null)
 				notifier.PropertyChanged += HandleItemObjectChanged;
 		}
-
-
-
-		///////////////////////////////////////////////////////////////////////////////
-		public event PropertyChangedEventHandler PropertyChanged;
-
 
 		// ============================================================================
 		public SortableCheckItem(
@@ -2097,11 +2049,15 @@ namespace Com.AiricLenz.XTB.Components
 			_sortingIndex = sortingIndex;
 			_isChecked = false;
 			_title = item.ToString();
+			_isFilteredOut = false;
 		}
 
 
+		// ............................................................................
+		public event PropertyChangedEventHandler PropertyChanged;
 
-		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+		// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		public string Title
 		{
 			get
@@ -2111,10 +2067,11 @@ namespace Com.AiricLenz.XTB.Components
 			set
 			{
 				_title = value;
+				OnPropertyChanged(nameof(Title));
 			}
 		}
 
-		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		public object ItemObject
 		{
 			get
@@ -2124,10 +2081,11 @@ namespace Com.AiricLenz.XTB.Components
 			set
 			{
 				_itemObject = value;
+				OnPropertyChanged(nameof(ItemObject));
 			}
 		}
 
-		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		public bool IsChecked
 		{
 			get
@@ -2180,7 +2138,7 @@ namespace Com.AiricLenz.XTB.Components
 		}
 
 
-		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 		public int SortingIndex
 		{
 			get
@@ -2190,8 +2148,27 @@ namespace Com.AiricLenz.XTB.Components
 			set
 			{
 				_sortingIndex = value;
+				OnPropertyChanged(nameof(SortingIndex));
 			}
 		}
+
+		// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		public bool IsFilteredOut
+		{
+			get => _isFilteredOut;
+			set
+			{
+				if (_isFilteredOut == value)
+				{
+					return;
+				}
+
+				_isFilteredOut = value;
+				OnPropertyChanged(nameof(IsFilteredOut));
+			}
+		}
+
+
 
 		// ============================================================================
 		public int CompareTo(
