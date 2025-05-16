@@ -35,6 +35,7 @@ namespace Com.AiricLenz.XTB.Components
 
 		private List<SortableCheckItem> _items = new List<SortableCheckItem>();
 		private List<ColumnDefinition> _columns = new List<ColumnDefinition>();
+		private List<int> _visible = new List<int>();
 
 		private int _itemHeight = 20;
 		private float _textHeight;
@@ -245,9 +246,9 @@ namespace Com.AiricLenz.XTB.Components
 		{
 			get
 			{
-                return _items.Where(item => item.IsChecked)
-                             .Select(item => item.ItemObject)
-                             .ToList();
+				return _items.Where(item => item.IsChecked)
+							 .Select(item => item.ItemObject)
+							 .ToList();
 			}
 		}
 
@@ -694,6 +695,18 @@ namespace Com.AiricLenz.XTB.Components
 			}
 		}
 
+		//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+		/// <summary>
+		/// Returns a list of ItemObjects cast to the specified type T.
+		/// </summary>
+		/// <typeparam name="T">The type to cast each ItemObject to.</typeparam>
+		public List<T> GetItemObjects<T>()
+		{
+			return _items
+				.Select(it => it.ItemObject)
+				.OfType<T>()
+				.ToList();
+		}
 
 
 
@@ -731,12 +744,12 @@ namespace Com.AiricLenz.XTB.Components
 			PaintEventArgs e)
 		{
 			base.OnPaint(e);
-
-			int visibleCount = GetVisibleItemCount();
-
 			Graphics g = e.Graphics;
+
 			g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 			g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+			//int visibleCount = GetVisibleItemCount();
 
 			Brush brushCheckedRow =
 				new SolidBrush(
@@ -758,7 +771,7 @@ namespace Com.AiricLenz.XTB.Components
 				new SolidBrush(Color.FromArgb(255, 60, 60, 60)),
 				new Rectangle(0, 0, this.Width, _itemHeight));
 
-			if (_items.Count > 0)
+			if (_visible.Count > 0)
 			{
 				foreach (var column in _columns)
 				{
@@ -797,178 +810,185 @@ namespace Com.AiricLenz.XTB.Components
 
 			// -------------------------------------
 			// paint all items
-			int startIndex = _scrollOffset / _itemHeight;
-			int endIndex =
-				Math.Min(
-					visibleCount,
-					startIndex + ((Height - _itemHeight) / _itemHeight));
+			int rowsPerPage = (Height - _itemHeight) / _itemHeight;
+			int startV = _scrollOffset / _itemHeight;
+			int endV = Math.Min(_visible.Count, startV + rowsPerPage);
 
-
-			for (int i = startIndex; i < endIndex; i++)
+			if (_items.Count > 0)
 			{
-				// add one item height for the header
-				int yPosition = Math.Max(
-					_itemHeight,
-					((i + 1) * _itemHeight) - _scrollOffset);
-
-				var isChecked = _items[i].IsChecked && _isCheckable;
-				var isSelected = i == _selectedIndex;
-
-				var brushRow = isSelected ? new SolidBrush(Color.FromArgb(210, SystemColors.Highlight)) : (isChecked ? brushCheckedRow : Brushes.White);
-				var brushText = isSelected ? new SolidBrush(SystemColors.HighlightText) : new SolidBrush(ForeColor);
-				var hoveringThisCheckBox = _hoveringAboveCheckBoxIndex == i;
-
-				var checkBoxFillColor =
-					isChecked ?
-					ColorHelper.MixColors(_colorOn, (isSelected ? 0.2 : 0), Color.White) :
-					_colorOff;
-
-				var penCheckBoxFrame =
-					isSelected ?
-					new Pen(Color.FromArgb(210, Color.Black), hoveringThisCheckBox ? 2f : 1.5f) :
-					new Pen(Color.FromArgb(120, 0, 0, 0), isChecked ? (hoveringThisCheckBox ? 2f : 1.5f) : (hoveringThisCheckBox ? 2f : 1f));
-
-				// paint the row
-				var penRowFrame = new Pen(Color.FromArgb(50, Color.LightGray));
-				g.FillRectangle(brushRow, new Rectangle(0, yPosition, this.Width, _itemHeight));
-				g.DrawRectangle(penRowFrame, new Rectangle(0, yPosition, this.Width, _itemHeight));
 
 
-				// write the text
-				colPosX = leftMargin;
-
-				if (_items.Count > 0)
+				for (int v = startV; v < endV; v++)
 				{
-					foreach (var column in _columns)
+					// logical index in _items
+					int i = _visible[v];
+
+					// add one item height for the header
+					int yPosition = Math.Max(
+						_itemHeight,
+						((v + 1) * _itemHeight) - _scrollOffset);
+
+					var item = _items[i];
+					var isChecked = item.IsChecked && _isCheckable;
+					var isSelected = i == _selectedIndex;
+
+					var brushRow = isSelected ? new SolidBrush(Color.FromArgb(210, SystemColors.Highlight)) : (isChecked ? brushCheckedRow : Brushes.White);
+					var brushText = isSelected ? new SolidBrush(SystemColors.HighlightText) : new SolidBrush(ForeColor);
+					var hoveringThisCheckBox = _hoveringAboveCheckBoxIndex == i;
+
+					var checkBoxFillColor =
+						isChecked ?
+						ColorHelper.MixColors(_colorOn, (isSelected ? 0.2 : 0), Color.White) :
+						_colorOff;
+
+					var penCheckBoxFrame =
+						isSelected ?
+						new Pen(Color.FromArgb(210, Color.Black), hoveringThisCheckBox ? 2f : 1.5f) :
+						new Pen(Color.FromArgb(120, 0, 0, 0), isChecked ? (hoveringThisCheckBox ? 2f : 1.5f) : (hoveringThisCheckBox ? 2f : 1f));
+
+					// paint the row
+					var penRowFrame = new Pen(Color.FromArgb(50, Color.LightGray));
+					g.FillRectangle(brushRow, new Rectangle(0, yPosition, this.Width, _itemHeight));
+					g.DrawRectangle(penRowFrame, new Rectangle(0, yPosition, this.Width, _itemHeight));
+
+
+					// write the text
+					colPosX = leftMargin;
+
+					if (_items.Count > 0)
 					{
-						if (column.Enabled == false)
+						foreach (var column in _columns)
 						{
-							continue;
-						}
-
-						var colWidth = column.GetWithInPixels(_dynamicColumnSpace);
-
-						if (!string.IsNullOrWhiteSpace(column.PropertyName))
-						{
-							var propertyObject = GetPropertyValue(_items[i].ItemObject, column.PropertyName);
-
-							if (propertyObject is Bitmap)
+							if (column.Enabled == false)
 							{
-								var propertyBitmap = propertyObject as Bitmap;
-								var imageHeight = Math.Min(_itemHeight - 2, propertyBitmap.Height);
-								var ratio = imageHeight / (float) propertyBitmap.Height;
-								var imageWidth = propertyBitmap.Width * ratio;
-								var marginTop = (_itemHeight - imageHeight) / 2;
-
-
-								g.DrawImage(
-									propertyBitmap,
-									colPosX + column.MarginLeft,
-									yPosition + marginTopText,
-									imageWidth,
-									imageHeight);
+								continue;
 							}
-							else
+
+							var colWidth = column.GetWithInPixels(_dynamicColumnSpace);
+
+							if (!string.IsNullOrWhiteSpace(column.PropertyName))
 							{
-								var propertyString = propertyObject?.ToString();
+								var propertyObject = GetPropertyValue(item.ItemObject, column.PropertyName);
 
-								g.DrawString(
-									propertyString,
-									(isChecked && _isBoldWhenCheck) || isSelected ? new Font(Font, FontStyle.Bold) : Font,
-									brushText,
-									new RectangleF(
-										colPosX,
-										yPosition + marginTopText + 1,
-										colWidth,
-										_textHeight));
+								if (propertyObject is Bitmap)
+								{
+									var propertyBitmap = propertyObject as Bitmap;
+									var imageHeight = Math.Min(_itemHeight - 2, propertyBitmap.Height);
+									var ratio = imageHeight / (float) propertyBitmap.Height;
+									var imageWidth = propertyBitmap.Width * ratio;
+									var marginTop = (_itemHeight - imageHeight) / 2;
+
+
+									g.DrawImage(
+										propertyBitmap,
+										colPosX + column.MarginLeft,
+										yPosition + marginTopText,
+										imageWidth,
+										imageHeight);
+								}
+								else
+								{
+									var propertyString = propertyObject?.ToString();
+
+									g.DrawString(
+										propertyString,
+										(isChecked && _isBoldWhenCheck) || isSelected ? new Font(Font, FontStyle.Bold) : Font,
+										brushText,
+										new RectangleF(
+											colPosX,
+											yPosition + marginTopText + 1,
+											colWidth,
+											_textHeight));
+								}
 							}
+
+
+							colPosX += colWidth;
 						}
-
-
-						colPosX += colWidth;
 					}
-				}
 
-				// Draw the checkbox background
-				if (_isCheckable)
-				{
-					LinearGradientBrush lgb = new LinearGradientBrush(
-						new Point(10, yPosition + (int) marginTopCheckBox),
-						new Point(10 + _checkBoxSize, yPosition + (int) marginTopCheckBox + _checkBoxSize),
-						ColorHelper.MixColors(checkBoxFillColor, 0.11, Color.Black),
-						Color.FromArgb(255, checkBoxFillColor));
-
-					DrawRoundedRectangle(
-						g,
-						new Rectangle(10, yPosition + (int) marginTopCheckBox, _checkBoxSize, _checkBoxSize),
-						_checkBoxRadius,
-						penCheckBoxFrame,
-						lgb);
-
-					// Draw the ckecker if this item is checked
-					if (isChecked)
+					// Draw the checkbox background
+					if (_isCheckable)
 					{
+						LinearGradientBrush lgb = new LinearGradientBrush(
+							new Point(10, yPosition + (int) marginTopCheckBox),
+							new Point(10 + _checkBoxSize, yPosition + (int) marginTopCheckBox + _checkBoxSize),
+							ColorHelper.MixColors(checkBoxFillColor, 0.11, Color.Black),
+							Color.FromArgb(255, checkBoxFillColor));
+
 						DrawRoundedRectangle(
 							g,
-							new Rectangle(
-								10 + _checkBoxMargin,
-								yPosition + (int) marginTopCheckBox + _checkBoxMargin,
-								_checkBoxSize - (2 * _checkBoxMargin),
-								_checkBoxSize - (2 * _checkBoxMargin)),
-							checkerRadius,
-							null,
-							Brushes.White);
+							new Rectangle(10, yPosition + (int) marginTopCheckBox, _checkBoxSize, _checkBoxSize),
+							_checkBoxRadius,
+							penCheckBoxFrame,
+							lgb);
+
+						// Draw the ckecker if this item is checked
+						if (isChecked)
+						{
+							DrawRoundedRectangle(
+								g,
+								new Rectangle(
+									10 + _checkBoxMargin,
+									yPosition + (int) marginTopCheckBox + _checkBoxMargin,
+									_checkBoxSize - (2 * _checkBoxMargin),
+									_checkBoxSize - (2 * _checkBoxMargin)),
+								checkerRadius,
+								null,
+								Brushes.White);
+						}
 					}
-				}
 
-				// Draw drag-burger
-				if (_isSortable)
-				{
-					var brushBurgerLines =
-						new SolidBrush(
-							Color.FromArgb(
-								_hoveringAboveDragBurgerIndex == i ? 100 : 40,
-								Color.Black));
-
-					// the lines
-					g.FillRectangle(
-						brushBurgerLines,
-						new RectangleF(
-							Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
-							yPosition + marginTopBurger,
-							_dragBurgerSize * 2f,
-							_dragBurgerLineThickness));
-
-					g.FillRectangle(
-						brushBurgerLines,
-						new RectangleF(
-							Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
-							yPosition + (_itemHeight / 2f) - (_dragBurgerLineThickness / 2f),
-							_dragBurgerSize * 2f,
-							_dragBurgerLineThickness));
-
-					g.FillRectangle(
-						brushBurgerLines,
-						new RectangleF(
-							Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
-							yPosition + marginTopBurger + _dragBurgerSize - _dragBurgerLineThickness,
-							_dragBurgerSize * 2f,
-							_dragBurgerLineThickness));
-
-
-					// paint a drag-n-drop indicator
-					if (i == _currentDropIndex)
+					// Draw drag-burger
+					if (_isSortable)
 					{
-						var brushFill = new SolidBrush(Color.FromArgb(50, Color.OrangeRed));
-						g.FillRectangle(brushFill, 0, yPosition + 1, Width, _itemHeight - 2);
+						var brushBurgerLines =
+							new SolidBrush(
+								Color.FromArgb(
+									_hoveringAboveDragBurgerIndex == i ? 100 : 40,
+									Color.Black));
+
+						// the lines
+						g.FillRectangle(
+							brushBurgerLines,
+							new RectangleF(
+								Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
+								yPosition + marginTopBurger,
+								_dragBurgerSize * 2f,
+								_dragBurgerLineThickness));
+
+						g.FillRectangle(
+							brushBurgerLines,
+							new RectangleF(
+								Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
+								yPosition + (_itemHeight / 2f) - (_dragBurgerLineThickness / 2f),
+								_dragBurgerSize * 2f,
+								_dragBurgerLineThickness));
+
+						g.FillRectangle(
+							brushBurgerLines,
+							new RectangleF(
+								Width - (_isShowScrollBar ? 15f : 8f) - (_dragBurgerSize * 2f),
+								yPosition + marginTopBurger + _dragBurgerSize - _dragBurgerLineThickness,
+								_dragBurgerSize * 2f,
+								_dragBurgerLineThickness));
+
+
+						// paint a drag-n-drop indicator
+						if (i == _currentDropIndex)
+						{
+							var brushFill = new SolidBrush(Color.FromArgb(50, Color.OrangeRed));
+							g.FillRectangle(brushFill, 0, yPosition + 1, Width, _itemHeight - 2);
+						}
 					}
 				}
 			}
 
+
 			// paint the scroll bar
 			if (_isShowScrollBar)
 			{
-				int totalItemsHeight = (visibleCount + 1) * _itemHeight;
+				int totalItemsHeight = (_visible.Count + 1) * _itemHeight;
 				int clientHeight = this.ClientRectangle.Height - 7;
 
 				// Calculate the length and position of the scrollbar
@@ -1039,17 +1059,17 @@ namespace Com.AiricLenz.XTB.Components
 
 		// ============================================================================
 		protected virtual void OnItemChecked(SortableCheckItem item = null)
-        {
-            if (item != null)
-            {
-                var eventArgs = new ItemEventArgs(item);
-                ItemChecked?.Invoke(this, eventArgs);
-            }
-            else
-            {
-                ItemChecked?.Invoke(this, ItemEventArgs.Empty);
-            }
-        }
+		{
+			if (item != null)
+			{
+				var eventArgs = new ItemEventArgs(item);
+				ItemChecked?.Invoke(this, eventArgs);
+			}
+			else
+			{
+				ItemChecked?.Invoke(this, ItemEventArgs.Empty);
+			}
+		}
 
 		// ============================================================================
 		protected virtual void OnItemOrderChanged()
@@ -1166,6 +1186,7 @@ namespace Com.AiricLenz.XTB.Components
 				_currentDropIndex = -1;
 			}
 
+			ApplyFilter();
 			Invalidate();
 		}
 
@@ -1305,26 +1326,23 @@ namespace Com.AiricLenz.XTB.Components
 			Point location)
 		{
 			// Calculate which item is at the given location
-			for (int i = 0; i < GetVisibleItemCount(); i++)
+			for (int v = 0; v < _visible.Count; v++)
 			{
-				if (GetItemBounds(i).Contains(location))
-				{
-					return i;
-				}
+				if (GetItemBounds(v).Contains(location))
+					return _visible[v];   // return **logical** index
 			}
 			return -1;
 		}
 
 		// ============================================================================
 		private Rectangle GetItemBounds(
-			int index)
+			int visibleIndex)
 		{
-			return
-				new Rectangle(
-					0,
-					(index * _itemHeight) + _itemHeight - _scrollOffset,
-					Width,
-					_itemHeight);
+			return new Rectangle(
+				0,
+				(visibleIndex * _itemHeight) + _itemHeight - _scrollOffset,
+				Width,
+				_itemHeight);
 		}
 
 		// ============================================================================
@@ -1336,6 +1354,7 @@ namespace Com.AiricLenz.XTB.Components
 				index < _items.Count)
 			{
 				_items[index].IsChecked = state;
+				ApplyFilter();
 			}
 		}
 
@@ -1347,6 +1366,7 @@ namespace Com.AiricLenz.XTB.Components
 				item.IsChecked = true;
 			}
 
+			ApplyFilter();
 			OnItemChecked();
 			Invalidate();
 		}
@@ -1359,6 +1379,7 @@ namespace Com.AiricLenz.XTB.Components
 				item.IsChecked = false;
 			}
 
+			ApplyFilter();
 			OnItemChecked();
 			Invalidate();
 		}
@@ -1371,6 +1392,7 @@ namespace Com.AiricLenz.XTB.Components
 				item.IsChecked = !item.IsChecked;
 			}
 
+			ApplyFilter();
 			OnItemChecked();
 			Invalidate();
 		}
@@ -1378,25 +1400,31 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		private void SelectPreviousItem()
 		{
-			if (_selectedIndex > 0)
+			int v = LogicalToVisible(_selectedIndex);
+
+			if (v > 0)
 			{
-				_selectedIndex--;
-				EnsureItemVisible(_selectedIndex);
-				OnSelectedIndexChanged();
-				Invalidate();
+				_selectedIndex = _visible[v - 1];
 			}
+
+			EnsureItemVisible(_selectedIndex);
+			OnSelectedIndexChanged();
+			Invalidate();
 		}
 
 		// ============================================================================
 		private void SelectNextItem()
 		{
-			if (_selectedIndex < GetVisibleItemCount() - 1)
+			int v = LogicalToVisible(_selectedIndex);
+
+			if (v < _visible.Count - 1)
 			{
-				_selectedIndex++;
-				EnsureItemVisible(_selectedIndex);
-				OnSelectedIndexChanged();
-				Invalidate();
+				_selectedIndex = _visible[v + 1];
 			}
+
+			EnsureItemVisible(_selectedIndex);
+			OnSelectedIndexChanged();
+			Invalidate();
 		}
 
 		// ============================================================================
@@ -1431,26 +1459,21 @@ namespace Com.AiricLenz.XTB.Components
 
 		// ============================================================================
 		public void EnsureItemVisible(
-			int index)
+			int logicalIndex)
 		{
-			if (index < 0 ||
-				index > GetVisibleItemCount())
+			int v = LogicalToVisible(logicalIndex);
+			if (v == -1)
 			{
 				return;
 			}
 
-			int itemTop = (index * _itemHeight) + _itemHeight;
-			int itemBottom = itemTop + _itemHeight;
+			int top = (v * _itemHeight) + _itemHeight;
+			int bot = top + _itemHeight;
 
-			// Adjust scrolling to ensure the item is fully visible
-			if (itemTop < _scrollOffset)
-			{
-				_scrollOffset = itemTop;
-			}
-			else if (itemBottom > _scrollOffset + Height)
-			{
-				_scrollOffset = itemBottom - Height + _itemHeight;
-			}
+			if (top < _scrollOffset)
+				_scrollOffset = top;
+			else if (bot > _scrollOffset + Height)
+				_scrollOffset = bot - Height + _itemHeight;
 
 			Invalidate();
 		}
@@ -1669,6 +1692,7 @@ namespace Com.AiricLenz.XTB.Components
 					item.SortingIndex = index++;
 				}
 
+				ApplyFilter();
 				OnItemOrderChanged();
 				Invalidate();
 				break;
@@ -1721,10 +1745,6 @@ namespace Com.AiricLenz.XTB.Components
 			}
 
 			// do some initialization first
-			int visibleCount = GetVisibleItemCount();
-			int startIndex = _scrollOffset / _itemHeight;
-			int endIndex = Math.Min(visibleCount, startIndex + ((Height - _itemHeight) / _itemHeight));
-
 			var _hoverCheckBoxIndexOld = _hoveringAboveCheckBoxIndex;
 			var _hoverDragBurgerIndexOld = _hoveringAboveDragBurgerIndex;
 
@@ -1733,10 +1753,17 @@ namespace Com.AiricLenz.XTB.Components
 
 			var mouseOverRowWithIndex = -1;
 
+			int rowsPerPage = (Height - _itemHeight) / _itemHeight;
+			int startV = _scrollOffset / _itemHeight;
+			int endV = Math.Min(_visible.Count, startV + rowsPerPage);
+
 			// get row index of mouse position
-			for (int i = startIndex; i < endIndex; i++)
+			for (int v = startV; v < endV; v++)
 			{
-				int yPosition = (i * _itemHeight) + _itemHeight - _scrollOffset;
+				int i = _visible[v];
+
+				int yPosition = (v * _itemHeight) + _itemHeight - _scrollOffset;
+
 				var checkBoxBoundsRow =
 					new Rectangle(0, yPosition, Width, _itemHeight);
 
@@ -1773,7 +1800,8 @@ namespace Com.AiricLenz.XTB.Components
 			if (_isCheckable &&
 				mouseOverRowWithIndex != -1)
 			{
-				int yPosition = (mouseOverRowWithIndex * _itemHeight) + _itemHeight - _scrollOffset;
+				int v = LogicalToVisible(mouseOverRowWithIndex);
+				int yPosition = (v * _itemHeight) + _itemHeight - _scrollOffset;
 
 				var checkBoxBoundsCheckBox =
 					new Rectangle(10, yPosition, _checkBoxSize, _checkBoxSize);
@@ -1806,8 +1834,8 @@ namespace Com.AiricLenz.XTB.Components
 			if (_isSortable &&
 				mouseOverRowWithIndex != -1)
 			{
-
-				int yPosition = (mouseOverRowWithIndex * _itemHeight) + _itemHeight - _scrollOffset;
+				int v = LogicalToVisible(mouseOverRowWithIndex);
+				int yPosition = (v * _itemHeight) + _itemHeight - _scrollOffset;
 
 				var checkBoxBoundsCheckBox =
 					new RectangleF(
@@ -1867,82 +1895,93 @@ namespace Com.AiricLenz.XTB.Components
 				_selectedIndex = mouseOverRowWithIndex;
 
 				OnSelectedIndexChanged();
+				ApplyFilter();
+
 			}
 
 		}
 
-        // ============================================================================
-        // Update ApplyFilter to AND-join _isShowOnlyCheckedItems with existing filter
-        private bool ApplyFilter()
-        {
+		// ============================================================================
+		// Update ApplyFilter to AND-join _isShowOnlyCheckedItems with existing filter
+		private bool ApplyFilter()
+		{
 			if (_items == null)
+			{
 				return false;
+			}
+
 
 			object prevSelection =
-				(
-					_selectedIndex >= 0 &&
-					_selectedIndex < _items.Count
-				)
-				? _items[_selectedIndex].ItemObject
-				: null;
+				_selectedIndex >= 0 &&
+				_selectedIndex < _items.Count
+					? _items[_selectedIndex].ItemObject
+					: null;
 
-			// reset flags
+			// 1) reset flags
 			foreach (var it in _items)
 			{
 				it.IsFilteredOut = false;
 			}
 
-			bool hasTextFilter =
+			// 2) mark hidden items
+			bool hasText =
 				_filter != null &&
 				!string.IsNullOrWhiteSpace(_filter.FilterOnProperty) &&
 				!string.IsNullOrWhiteSpace(_filter.FilterString);
 
-			if (!hasTextFilter &&
-				!_isShowOnlyCheckedItems)
+			if (hasText || _isShowOnlyCheckedItems)
 			{
-				UpdateSelectionAfterFilter(prevSelection);
-				ClampScrollOffset();
-				return true;
-			}
+				string needle = _filter?.FilterString ?? string.Empty;
+				Func<string, bool> pred = _ => true;
 
-			string needle = _filter?.FilterString ?? string.Empty;
-			Func<string, bool> predicate = _ => true;
-
-			if (hasTextFilter)
-			{
-				switch (_filter.ConditionOperator)
+				if (hasText)
 				{
-					case ConditionOperator.Equals:
-						predicate = s => string.Equals(s, needle, StringComparison.OrdinalIgnoreCase);
-						break;
-					case ConditionOperator.Contains:
-						predicate = s => s?.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
-						break;
-					case ConditionOperator.StartsWith:
-						predicate = s => s?.StartsWith(needle, StringComparison.OrdinalIgnoreCase) == true;
-						break;
-					case ConditionOperator.EndsWith:
-						predicate = s => s?.EndsWith(needle, StringComparison.OrdinalIgnoreCase) == true;
-						break;
+					switch (_filter.ConditionOperator)
+					{
+						case ConditionOperator.Equals:
+							pred = s => string.Equals(
+										   s, needle, StringComparison.OrdinalIgnoreCase);
+							break;
+						case ConditionOperator.Contains:
+							pred = s => s?.IndexOf(
+										   needle, StringComparison.OrdinalIgnoreCase) >= 0;
+							break;
+						case ConditionOperator.StartsWith:
+							pred = s => s?.StartsWith(
+										   needle, StringComparison.OrdinalIgnoreCase) == true;
+							break;
+						case ConditionOperator.EndsWith:
+							pred = s => s?.EndsWith(
+										   needle, StringComparison.OrdinalIgnoreCase) == true;
+							break;
+					}
+				}
+
+				foreach (var it in _items)
+				{
+					bool textOk = !hasText ||
+								  pred((GetPropertyValue(it.ItemObject,
+										  _filter.FilterOnProperty)?.ToString()) ?? string.Empty);
+					bool checkedOk = !_isShowOnlyCheckedItems || it.IsChecked;
+
+					it.IsFilteredOut = !(textOk && checkedOk);
 				}
 			}
 
-			foreach (var item in _items)
-			{
-				bool match = !hasTextFilter ||
-							predicate((GetPropertyValue(item.ItemObject, _filter.FilterOnProperty)?.ToString()) ?? string.Empty);
-				bool checkedOk = !_isShowOnlyCheckedItems || item.IsChecked;
+			// 3) refresh the visible-row map (no duplicates, minimal memory)
+			_visible = _items
+					   .Select((it, idx) => new { it, idx })
+					   .Where(x => !x.it.IsFilteredOut)
+					   .Select(x => x.idx)
+					   .ToList();
 
-				item.IsFilteredOut = !(match && checkedOk);
-			}
+			// 4) keep selection if still visible
+			_selectedIndex = prevSelection == null
+				? -1
+				: _items
+					.FindIndex(it => Equals(it.ItemObject, prevSelection) &&
+									 !it.IsFilteredOut);
 
-			// keep existing visual order but push hidden items to the back
-			_items =
-				_items.OrderBy(i => i.IsFilteredOut)
-					.ThenBy(i => i.SortingIndex)
-					.ToList();
-
-			UpdateSelectionAfterFilter(prevSelection);
 			ClampScrollOffset();
 			return true;
 		}
@@ -1951,7 +1990,23 @@ namespace Com.AiricLenz.XTB.Components
 		// ============================================================================
 		private int GetVisibleItemCount()
 		{
-			return _items.Count(it => !it.IsFilteredOut);
+			return _visible.Count;
+		}
+
+		// ============================================================================
+		private int LogicalToVisible(int logical)
+		{
+			return _visible.IndexOf(logical);
+		}
+
+		// ============================================================================
+		private int VisibleToLogical(int visible)
+		{
+			return (
+				visible >= 0 &&
+				visible < _visible.Count)
+					? _visible[visible]
+					: -1;
 		}
 
 
@@ -2010,9 +2065,9 @@ namespace Com.AiricLenz.XTB.Components
 		private int _sortingIndex;
 		private string _title;
 
-		private object _itemObject;		// the wrapped item (any type)
-		private string _linkedProperty;	// null → no external link
-		private bool _localChecked;					// fallback storage
+		private object _itemObject;     // the wrapped item (any type)
+		private string _linkedProperty; // null → no external link
+		private bool _localChecked;                 // fallback storage
 
 
 
