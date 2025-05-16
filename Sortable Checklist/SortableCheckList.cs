@@ -1156,7 +1156,6 @@ namespace Com.AiricLenz.XTB.Components
 				ResetSortingColumnToNone();
 
 				// Trigger events
-				SyncAllItemsOrder();
 				OnItemOrderChanged();
 				OnSelectedIndexChanged();
 				OnSortingColumnChanged();
@@ -1670,7 +1669,6 @@ namespace Com.AiricLenz.XTB.Components
 					item.SortingIndex = index++;
 				}
 
-				SyncAllItemsOrder();
 				OnItemOrderChanged();
 				Invalidate();
 				break;
