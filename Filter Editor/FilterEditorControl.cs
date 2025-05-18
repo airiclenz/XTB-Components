@@ -17,10 +17,20 @@ namespace Com.AiricLenz.XTB.Components
         public event EventHandler FilterChanged;
 		
 		private TableFilter _filter = new TableFilter();
+		private List<TableAttribute> _attributes = new List<TableAttribute>();
 
 
 		// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  
-		public List<TableAttribute> Attributes { get; set; } = new List<TableAttribute> ();
+		[Browsable(false)]
+		public List<TableAttribute> Attributes
+		{
+			get => _attributes;
+			set
+			{
+				_attributes = value ?? new List<TableAttribute>();
+				ApplyAttributesToRoot();
+			}
+		}
 
 
 		// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  
@@ -62,17 +72,20 @@ namespace Com.AiricLenz.XTB.Components
 
             // add root filter group  
             var filterGroupControl = new FilterGroupControl();
-            filterGroupControl.FilterChanged += (_, __) => OnFilterChanged();
+            filterGroupControl.SetAttributes(_attributes);
+			filterGroupControl.FilterChanged += (_, __) => OnFilterChanged();
+			
             panelRoot.Controls.Add(filterGroupControl);
         }
 
-        // ============================================================================  
-        private void RenderFilter(
+
+		// ============================================================================  
+		private void RenderFilter(
             TableFilter tableFilter)
         {
-            if (!(Controls[0] is Panel pnlRoot &&
-                pnlRoot.Controls.Count != 0 &&
-                pnlRoot.Controls[0] is FilterGroupControl rootGroup))
+            if (!(Controls[0] is Panel panelRoot &&
+                panelRoot.Controls.Count != 0 &&
+                panelRoot.Controls[0] is FilterGroupControl rootGroup))
             {
                 return;
             }
@@ -81,12 +94,32 @@ namespace Com.AiricLenz.XTB.Components
 				tableFilter.RootFilter);
         }
 
-        // ============================================================================  
-        private TableFilter BuildFilterFromUI()
+		// ============================================================================
+		    private void ApplyAttributesToRoot()
         {
-            if (!(Controls[0] is Panel pnlRoot &&
-                pnlRoot.Controls.Count != 0 &&
-                pnlRoot.Controls[0] is FilterGroupControl rootGroup))
+            if (Controls.Count == 0)
+            {
+                return;
+            }
+
+            if (!(Controls[0] is Panel panelRoot) ||
+                panelRoot.Controls.Count == 0)
+            {
+                return;
+            }
+
+            if (panelRoot.Controls[0] is FilterGroupControl rootGrp)
+            {
+                rootGrp.SetAttributes(_attributes);
+            }
+        }
+
+		// ============================================================================  
+		private TableFilter BuildFilterFromUI()
+        {
+            if (!(Controls[0] is Panel panelRoot &&
+                panelRoot.Controls.Count != 0 &&
+                panelRoot.Controls[0] is FilterGroupControl rootGroup))
             {
                 return _filter;
             }

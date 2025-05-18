@@ -16,22 +16,10 @@ namespace Com.AiricLenz.XTB.Components.Filter.Schema
 	{
 		public event EventHandler FilterChanged;
 
-		private ComboBox _cbField;
-		private ComboBox _cbOperator;
+		private ComboBox _comboBoxField;
+		private ComboBox _comboBoxOperator;
 		private TextBox _txtValue;
-		private CheckBox _chkPlaceholder;
-
-		public void SetAttributeList(IEnumerable<TableAttribute> attributes)
-		{
-			_cbField.BeginUpdate();
-			_cbField.Items.Clear();
-			if (attributes != null)
-			{
-				foreach (var a in attributes)
-					_cbField.Items.Add(a.LogicalName);
-			}
-			_cbField.EndUpdate();
-		}
+		private CheckBox _checkBoxPlaceholder;
 
 
 		// ============================================================================
@@ -45,24 +33,24 @@ namespace Com.AiricLenz.XTB.Components.Filter.Schema
 		// ============================================================================
 		private void InitializeComponent()
 		{
-			_cbField = new ComboBox { Width = 150, DropDownStyle = ComboBoxStyle.DropDownList };
-			_cbOperator = new ComboBox { Width = 90, DropDownStyle = ComboBoxStyle.DropDownList };
+			_comboBoxField = new ComboBox { Width = 150, DropDownStyle = ComboBoxStyle.DropDownList };
+			_comboBoxOperator = new ComboBox { Width = 90, DropDownStyle = ComboBoxStyle.DropDownList };
 			_txtValue = new TextBox { Width = 160 };
-			_chkPlaceholder = new CheckBox { Text = "Placeholder" };
+			_checkBoxPlaceholder = new CheckBox { Text = "Placeholder" };
 
 			foreach (var op in new[] { "eq", "ne", "contains", "startswith", "endswith", "ge", "le" })
 			{
-				_cbOperator.Items.Add(op);
+				_comboBoxOperator.Items.Add(op);
 			}
 
-			_cbOperator.SelectedIndex = 0;
+			_comboBoxOperator.SelectedIndex = 0;
 
-			_cbField.SelectedIndexChanged += (_, __) => OnFilterChanged();
-			_cbOperator.SelectedIndexChanged += (_, __) => OnFilterChanged();
+			_comboBoxField.SelectedIndexChanged += (_, __) => OnFilterChanged();
+			_comboBoxOperator.SelectedIndexChanged += (_, __) => OnFilterChanged();
 			_txtValue.TextChanged += (_, __) => OnFilterChanged();
-			_chkPlaceholder.CheckedChanged += (_, __) => OnFilterChanged();
+			_checkBoxPlaceholder.CheckedChanged += (_, __) => OnFilterChanged();
 
-			Controls.AddRange(new Control[] { _cbField, _cbOperator, _txtValue, _chkPlaceholder });
+			Controls.AddRange(new Control[] { _comboBoxField, _comboBoxOperator, _txtValue, _checkBoxPlaceholder });
 
 			// Populate _cbField in runtime after metadata is loaded
 		}
@@ -70,10 +58,27 @@ namespace Com.AiricLenz.XTB.Components.Filter.Schema
 		// ============================================================================
 		public void LoadCondition(FilterCondition cond)
 		{
-			_cbField.Text = cond.Attribute;
-			_cbOperator.Text = cond.Operator;
+			_comboBoxField.Text = cond.Attribute;
+			_comboBoxOperator.Text = cond.Operator;
 			_txtValue.Text = cond.IsPlaceholder ? cond.Placeholder : cond.Value;
-			_chkPlaceholder.Checked = cond.IsPlaceholder;
+			_checkBoxPlaceholder.Checked = cond.IsPlaceholder;
+		}
+
+		// ============================================================================
+		public void SetAttributes(
+			IEnumerable<TableAttribute> attributes)
+		{
+			_comboBoxField.BeginUpdate();
+			_comboBoxField.Items.Clear();
+
+			if (attributes != null)
+			{
+				foreach (var a in attributes)
+				{
+					_comboBoxField.Items.Add(a.LogicalName);
+				}
+			}
+			_comboBoxField.EndUpdate();
 		}
 
 		// ============================================================================
@@ -81,10 +86,10 @@ namespace Com.AiricLenz.XTB.Components.Filter.Schema
 		{
 			return new FilterCondition
 			{
-				Attribute = _cbField.Text,
-				Operator = _cbOperator.Text,
-				Value = _chkPlaceholder.Checked ? null : _txtValue.Text,
-				Placeholder = _chkPlaceholder.Checked ? _txtValue.Text : null,
+				Attribute = _comboBoxField.Text,
+				Operator = _comboBoxOperator.Text,
+				Value = _checkBoxPlaceholder.Checked ? null : _txtValue.Text,
+				Placeholder = _checkBoxPlaceholder.Checked ? _txtValue.Text : null,
 				ValueType = "string"
 			};
 		}
